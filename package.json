@@ -1,6 +1,6 @@
 {
   "name": "opencode-anthropic-claude-code",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Anthropic Messages relay for magpie: optional Claude Code client headers for vendors that only accept the official Claude CLI.",
   "type": "module",
   "main": "./index.mjs",
