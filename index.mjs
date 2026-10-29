@@ -37,7 +37,7 @@ const DEFAULT_MODELS = {
 }
 
 /** Strip trailing slash; ensure a /v1 suffix (magpie joins base + /messages). */
-export function normalizeBaseURL(raw) {
+function normalizeBaseURL(raw) {
   let u = String(raw ?? "").trim()
   if (!u) return ""
   u = u.replace(/\/+$/, "")
@@ -46,7 +46,7 @@ export function normalizeBaseURL(raw) {
 }
 
 /** Headers Claude Code sends that relays fingerprint on. Never includes credentials. */
-export function claudeCodeHeaders({
+function claudeCodeHeaders({
   userAgent = DEFAULT_UA,
   betas = DEFAULT_BETAS,
   sessionId,
@@ -73,12 +73,52 @@ export function claudeCodeHeaders({
  * Leaves Authorization / x-api-key alone (set by apiKey / earlier steps).
  * Merges anthropic-beta: Claude Code betas first, then any agent betas not already listed.
  */
-export function applyClaudeCodeHeaders(headers, opts = {}) {
+function headerGet(headers, name) {
+  if (!headers) return ""
+  if (typeof headers.get === "function") return headers.get(name) || headers.get(name.toLowerCase()) || ""
+  const lower = name.toLowerCase()
+  for (const [k, v] of Object.entries(headers)) {
+    if (String(k).toLowerCase() === lower) return v == null ? "" : String(v)
+  }
+  return ""
+}
+
+function headerSet(headers, name, value) {
+  if (typeof headers.set === "function") {
+    headers.set(name, value)
+    return
+  }
+  headers[name] = value
+}
+
+function toHeaders(init) {
+  const h = new Headers()
+  if (!init) return h
+  if (typeof init.forEach === "function") {
+    init.forEach((v, k) => h.set(k, v))
+    return h
+  }
+  if (Array.isArray(init)) {
+    for (const pair of init) {
+      if (pair && pair.length >= 2) h.set(pair[0], pair[1])
+    }
+    return h
+  }
+  if (typeof init === "object") {
+    for (const [k, v] of Object.entries(init)) {
+      if (v != null) h.set(k, String(v))
+    }
+  }
+  return h
+}
+
+/** Apply Claude Code client headers. Accepts Headers or a plain object. */
+function applyClaudeCodeHeaders(headers, opts = {}) {
   const shaped = claudeCodeHeaders(opts)
-  const existingBeta = headers.get("anthropic-beta") || headers.get("Anthropic-Beta") || ""
+  const existingBeta = headerGet(headers, "anthropic-beta")
   for (const [k, v] of Object.entries(shaped)) {
     if (k === "anthropic-beta") continue
-    headers.set(k, v)
+    headerSet(headers, k, v)
   }
   const parts = new Set()
   for (const p of String(shaped["anthropic-beta"]).split(",")) {
@@ -90,7 +130,7 @@ export function applyClaudeCodeHeaders(headers, opts = {}) {
     // Never forward the oauth beta; Claude Code's own sign-in never does on a key relay.
     if (t && t !== "oauth-2025-04-20") parts.add(t)
   }
-  headers.set("anthropic-beta", [...parts].join(","))
+  headerSet(headers, "anthropic-beta", [...parts].join(","))
   return headers
 }
 
@@ -110,7 +150,7 @@ function parseModelList(raw) {
   return ids.length ? ids : null
 }
 
-export const AnthropicClaudeCodePlugin = async (input) => {
+const AnthropicClaudeCodePlugin = async (input) => {
   const optionOn = (key) => {
     try {
       return input?.magpie?.option?.(PROVIDER, key) === true
@@ -226,7 +266,7 @@ export const AnthropicClaudeCodePlugin = async (input) => {
           baseURL,
           apiKey: auth.key,
           async fetch(inputURL, init) {
-            const headers = new Headers(init?.headers)
+            const headers = toHeaders(init?.headers)
             // Prefer x-api-key for Anthropic; keep Bearer if already set by host.
             if (!headers.has("x-api-key") && !headers.has("X-Api-Key")) {
               headers.set("x-api-key", auth.key)
