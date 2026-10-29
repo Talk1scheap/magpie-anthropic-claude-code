@@ -1,0 +1,27 @@
+{
+  "name": "opencode-anthropic-claude-code",
+  "version": "0.1.0",
+  "description": "Anthropic Messages relay for magpie: optional Claude Code client headers for vendors that only accept the official Claude CLI.",
+  "type": "module",
+  "main": "./index.mjs",
+  "files": [
+    "index.mjs",
+    "README.md",
+    "README.zh-CN.md"
+  ],
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "magpie",
+    "anthropic",
+    "claude-code"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Talk1scheap/magpie-anthropic-claude-code.git"
+  },
+  "magpie": {
+    "maxConcurrency": 8
+  }
+}
